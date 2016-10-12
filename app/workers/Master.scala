@@ -37,21 +37,19 @@ class Master(
       }
 
       readers foreach (_ ! FundsProcessor.Read)
-      context become reading(readers, mutable.Buffer.empty)
+      context become reading(readers, 0)
   }
 
-  def reading(readers: Set[ActorRef], lines: mutable.Buffer[Fund]): Receive = {
+  def reading(readers: Set[ActorRef], linesNo: Int): Receive = {
 
     case FundsProcessor.Done(linesPart) =>
       val newReaders = readers - sender
 
       if(newReaders.isEmpty) {
-        val allLines = lines ++ linesPart
-        println(allLines.size)
-        if(allLines.nonEmpty) {
+        val allLines = linesNo + linesPart
+        println(allLines)
+        if(allLines != 0) {
           Logger.info(s"${context.self.path.name} Done reading links' data. Start writing data ...")
-          self ! Write(allLines)
-          context become writing
         }
         else {
           Logger.info(s"${context.self.path.name} No data to write.")
@@ -59,22 +57,14 @@ class Master(
         }
       }
       else {
-        context become reading(newReaders, lines ++ linesPart)
+        context become reading(newReaders, linesNo + linesPart)
       }
 
     case Tick =>
       Logger.error(s"${context.self.path.name} reading :: Tick ignored.")
   }
 
-  def writing: Receive = {
 
-    case Write(data) =>
-      data.foreach(fund => println(fund)) //TODO insert
-      context become ready
-
-    case Tick =>
-      Logger.error(s"${context.self.path.name} writing :: Tick ignored.")
-  }
 }
 
 object Master {

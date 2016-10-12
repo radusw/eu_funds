@@ -12,6 +12,7 @@ import models.Fund
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.ss.usermodel.{CellType, Row}
 import play.api.Logger
+import workers.Master.Write
 
 import scala.collection.mutable
 import scala.concurrent._
@@ -42,27 +43,26 @@ class FundsProcessor(url: String) extends Actor {
       context.system.scheduler.scheduleOnce((1 << retryNo) seconds, self, Read) // exponential backoff
 
     case Success(stream: InputStream) =>
-      val linesDailyDelta: mutable.Buffer[Fund] =
+      val lines: mutable.Buffer[Fund] =
         Try {
           parseXls(stream)
         } match {
-          case Success(lines) =>
-            println(lines.size)
-            lines
+          case Success(result) => result
 
           case Failure(cause) =>
             Logger.warn(s"${context.self.path.name} Could not parse body - " + cause)
             mutable.Buffer.empty
         }
-      stop(linesDailyDelta)
+      lines.take(10).foreach(fund => println(fund)) //TODO insert
+      stop(lines.size)
 
     case Failure(cause) =>
       Logger.warn(s"${context.self.path.name} Reading failed - " + cause)
       self ! Retry
   }
 
-  def stop(data: Seq[Fund] = mutable.Buffer.empty): Unit = {
-    context.parent ! FundsProcessor.Done(data)
+  def stop(size: Int = 0): Unit = {
+    context.parent ! FundsProcessor.Done(size)
     context.stop(self)
   }
 
@@ -88,7 +88,7 @@ class FundsProcessor(url: String) extends Actor {
     val funds = mutable.Buffer.empty[Fund]
 
     val sheets = new HSSFWorkbook(stream).sheetIterator()
-    while(sheets.hasNext) {
+    while (sheets.hasNext) {
       val sheet = sheets.next()
       val rows = sheet.rowIterator().toBuffer[Row]
       val title = rows.head.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
@@ -98,23 +98,26 @@ class FundsProcessor(url: String) extends Actor {
           case _ => "N/A"
         }
       }
-      val entries = rows.tail.map { r => Fund(
-        r.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
-          val value = cell.getCellTypeEnum match {
-            case CellType.STRING => cell.getStringCellValue
-            case CellType.NUMERIC => cell.getNumericCellValue.toString
-            case CellType.BOOLEAN => cell.getBooleanCellValue.toString
-            case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
-              case CellType.STRING => cell.getStringCellValue
-              case CellType.NUMERIC => cell.getNumericCellValue.toString
-              case _ => ""
-            }
-            case CellType.BLANK | CellType.ERROR | CellType._NONE => ""
-          }
-          title(idx) -> value
-        })
+      val entries = rows.tail.map { row =>
+        Try {
+          Fund(
+            row.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
+              val value = cell.getCellTypeEnum match {
+                case CellType.STRING => cell.getStringCellValue
+                case CellType.NUMERIC => cell.getNumericCellValue.toString
+                case CellType.BOOLEAN => cell.getBooleanCellValue.toString
+                case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
+                  case CellType.STRING => cell.getStringCellValue
+                  case CellType.NUMERIC => cell.getNumericCellValue.toString
+                  case _ => ""
+                }
+                case CellType.BLANK | CellType.ERROR | CellType._NONE => ""
+              }
+              title(idx) -> value
+            })
+        }.toOption
       }
-      funds ++= entries
+      funds ++= entries.flatten
     }
 
     funds
@@ -126,6 +129,6 @@ object FundsProcessor {
   val timeout = 12000
 
   case class Read(url: String)
-  case class Done(lines: Seq[Fund])
+  case class Done(noOfLinesWritten: Int)
   case object Retry
 }
