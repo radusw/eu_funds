@@ -26,7 +26,7 @@ Edit /conf/application.conf
 - elastic.data.path = "data"
 
 ## Example
-### How many funds accesses in a city:
+### How many funds accessed in an area:
 - /list?filter=Constanta&from=0&size=200
 ```javascript
 "hits" : { "total" : 61527, ...
