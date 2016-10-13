@@ -25,7 +25,7 @@ Edit /conf/application.conf
 - elastic.data.path = "data"
 
 ## Example
-/list?filter=%22MIERCUREA%22
+/list?filter=MIERCUREA
 ```RichSearchResponse({
   "took" : 11,
   "timed_out" : false,
