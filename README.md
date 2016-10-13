@@ -16,7 +16,7 @@ GET     /refresh
 
 3. 
 Search for data
-GET     /list?filter=<String>    
+GET     /list?filter=???
 
 
 ## Config
@@ -27,7 +27,8 @@ Edit /conf/application.conf
 
 ## Example
 /list?filter=Titluproiuect:hotel Criss
-```RichSearchResponse({
+```
+RichSearchResponse({
   "took" : 19,
   "timed_out" : false,
   "_shards" : {
@@ -80,4 +81,5 @@ Edit /conf/application.conf
         "Valoareautorizata" : "5.0",
         "Datadepunerecerere" : "41754.0"
       }
-    }, {```
+    }, {
+```
