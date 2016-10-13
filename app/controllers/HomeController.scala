@@ -17,6 +17,7 @@ class HomeController @Inject() (
   val messagesApi: MessagesApi)
   extends Controller with I18nSupport {
 
+  val master = actorSystem.actorOf(Props(new Master(configuration, fundsService)))
 
   def index = Action { Ok("Start searching... e.g. /list?filter=Bucuresti") }
 
@@ -24,10 +25,11 @@ class HomeController @Inject() (
     fundsService.find(filter).map(result => Ok(result.toString))
   }
 
-  def refreshData() = Action { request =>
-    val master = actorSystem.actorOf(Props(new Master(configuration, fundsService)))
-    master ! Tick
-    Ok("Refreshing ... It may take a while")
+  def refreshData() = Action.async { request =>
+    fundsService.deleteAll().map { _ =>
+      master ! Tick
+      Ok("Refreshing ... It may take a while")
+    }
   }
 
 }

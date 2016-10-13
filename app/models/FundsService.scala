@@ -36,6 +36,10 @@ class FundsService @Inject() (
   def insertBlocking(funds: Funds) = {
     client.execute { index into "gov" / "funds" fields funds.data }.await
   }
+
+  def deleteAll() = {
+    client.execute { deleteIndex("gov") }
+  }
 }
 
 case class Funds(data: mutable.Buffer[(String, String)])

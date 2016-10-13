@@ -1,12 +1,15 @@
 package workers
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.routing.{ActorRefRoutee, RoundRobinRoutingLogic, Router}
 import models.{Funds, FundsService}
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import net.ruippeixotog.scalascraper.model.Element
 import play.api.Logger
+import workers.FundsProcessor.Read
+
 import scala.collection.mutable
 
 class Master(
@@ -15,6 +18,16 @@ class Master(
 
   import workers.Master._
 
+  var router = {
+    val routees = Vector.fill(8) {
+      val r = context.actorOf(Props(new FundsProcessor(fundsService)))
+      context watch r
+      ActorRefRoutee(r)
+    }
+    Router(RoundRobinRoutingLogic(), routees)
+  }
+
+
   override def receive = ready
 
   override def unhandled(message: Any): Unit = {
@@ -22,7 +35,6 @@ class Master(
   }
 
   def ready: Receive = {
-
     case Tick =>
       val browser = JsoupBrowser()
       val doc = browser.get(configuration.underlying.getString("gov.url"))
@@ -30,40 +42,23 @@ class Master(
       val fileUrls: Set[String] = items.map(_.attr("href")).toSet
 
       Logger.info(s"${context.self.path.name} Reading data from " + fileUrls.size + " links ...")
-      val readers = for {
-        (url, idx) <- fileUrls.zipWithIndex
-      } yield {
-        context.actorOf(Props(new FundsProcessor(url, fundsService)), s"Reader$idx")
-      }
+      for (url <- fileUrls) self ! FundsProcessor.Read(url)
 
-      readers foreach (_ ! FundsProcessor.Read)
-      context become reading(readers, 0)
-  }
-
-  def reading(readers: Set[ActorRef], linesNo: Int): Receive = {
+    case work@FundsProcessor.Read(url) =>
+      router.route(work, sender())
 
     case FundsProcessor.Done(linesPart) =>
-      val newReaders = readers - sender
+      if(linesPart != 0)
+        Logger.info(s"${context.self.path.name} Done importing links' data. $linesPart lines imported.")
+      else
+        Logger.info(s"${context.self.path.name} No data to import.")
 
-      if(newReaders.isEmpty) {
-        val allLines = linesNo + linesPart
-        if(allLines != 0) {
-          Logger.info(s"${context.self.path.name} Done importing links' data. $linesNo lines imported.")
-        }
-        else {
-          Logger.info(s"${context.self.path.name} No data to import.")
-          context become ready
-        }
-      }
-      else {
-        context become reading(newReaders, linesNo + linesPart)
-      }
-
-    case Tick =>
-      Logger.error(s"${context.self.path.name} reading :: Tick ignored.")
+    case Terminated(a) =>
+      router = router.removeRoutee(a)
+      val r = context.actorOf(Props(new FundsProcessor(fundsService)))
+      context watch r
+      router = router.addRoutee(r)
   }
-
-
 }
 
 object Master {

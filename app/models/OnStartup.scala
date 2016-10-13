@@ -13,10 +13,4 @@ class OnStartup @Inject() (
   fundsService: FundsService,
   actorSystem: ActorSystem) {
 
-  // fetch data for the first time
-  if(fundsService.findBlocking("B").isEmpty) {
-    val master = actorSystem.actorOf(Props(new Master(configuration, fundsService)))
-    master ! Tick
-  }
-
 }
