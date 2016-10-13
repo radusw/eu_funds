@@ -8,17 +8,17 @@ import scala.collection.JavaConversions._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import akka.actor._
-import models.Fund
+import models.{Funds, FundsService}
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.ss.usermodel.{CellType, Row}
 import play.api.Logger
-import workers.Master.Write
 
 import scala.collection.mutable
 import scala.concurrent._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
-class FundsProcessor(url: String) extends Actor {
+class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
   import FundsProcessor._
 
@@ -43,17 +43,22 @@ class FundsProcessor(url: String) extends Actor {
       context.system.scheduler.scheduleOnce((1 << retryNo) seconds, self, Read) // exponential backoff
 
     case Success(stream: InputStream) =>
-      val lines: mutable.Buffer[Fund] =
+      val lines: mutable.Buffer[Funds] =
         Try {
           parseXls(stream)
         } match {
-          case Success(result) => result
+          case Success(result) =>
+            result
 
           case Failure(cause) =>
-            Logger.warn(s"${context.self.path.name} Could not parse body - " + cause)
+            Logger.warn(s"$url - Could not parse body - " + cause)
             mutable.Buffer.empty
         }
-      lines.take(10).foreach(fund => println(fund)) //TODO insert
+      if (lines.nonEmpty) {
+        Logger.info(s"${context.self.path.name}  - Starting writing ${lines.size} lines")
+        lines.foreach(line => fundsService.insert(line))
+        Logger.warn(s"${context.self.path.name}  - Done inserting ${lines.size}.")
+      }
       stop(lines.size)
 
     case Failure(cause) =>
@@ -85,39 +90,41 @@ class FundsProcessor(url: String) extends Actor {
   }
 
   def parseXls(stream: InputStream) = {
-    val funds = mutable.Buffer.empty[Fund]
+    val funds = mutable.Buffer.empty[Funds]
 
     val sheets = new HSSFWorkbook(stream).sheetIterator()
     while (sheets.hasNext) {
       val sheet = sheets.next()
-      val rows = sheet.rowIterator().toBuffer[Row]
-      val title = rows.head.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
+      val rows = sheet.rowIterator()
+
+      val firstRow = rows.next()
+      val title = firstRow.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
         cell.getCellTypeEnum match {
           case CellType.STRING => cell.getStringCellValue
           case CellType.NUMERIC => cell.getNumericCellValue.toString
           case _ => "N/A"
         }
       }
-      val entries = rows.tail.map { row =>
-        Try {
-          Fund(
-            row.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
-              val value = cell.getCellTypeEnum match {
+
+      while(rows.hasNext) try {
+        funds += Funds(
+          rows.next().cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
+            val value = cell.getCellTypeEnum match {
+              case CellType.STRING => cell.getStringCellValue
+              case CellType.NUMERIC => cell.getNumericCellValue.toString
+              case CellType.BOOLEAN => cell.getBooleanCellValue.toString
+              case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
                 case CellType.STRING => cell.getStringCellValue
                 case CellType.NUMERIC => cell.getNumericCellValue.toString
-                case CellType.BOOLEAN => cell.getBooleanCellValue.toString
-                case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
-                  case CellType.STRING => cell.getStringCellValue
-                  case CellType.NUMERIC => cell.getNumericCellValue.toString
-                  case _ => ""
-                }
-                case CellType.BLANK | CellType.ERROR | CellType._NONE => ""
+                case _ => ""
               }
-              title(idx) -> value
-            })
-        }.toOption
+              case CellType.BLANK | CellType.ERROR | CellType._NONE => ""
+            }
+            title(idx) -> value
+          })
+      } catch {
+        case NonFatal(e) => Logger.warn(s"$url - Could not parse row - " + e)
       }
-      funds ++= entries.flatten
     }
 
     funds

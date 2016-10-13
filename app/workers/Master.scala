@@ -1,7 +1,7 @@
 package workers
 
 import akka.actor.{Actor, ActorRef, Props}
-import models.{Fund, FundService}
+import models.{Funds, FundsService}
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
@@ -11,7 +11,7 @@ import scala.collection.mutable
 
 class Master(
   configuration: play.api.Configuration,
-  fundService: FundService) extends Actor {
+  fundsService: FundsService) extends Actor {
 
   import workers.Master._
 
@@ -33,7 +33,7 @@ class Master(
       val readers = for {
         (url, idx) <- fileUrls.zipWithIndex
       } yield {
-        context.actorOf(Props(new FundsProcessor(url)), s"$idx-Reader-${url.replaceAll("\\W", "").takeRight(32)}")
+        context.actorOf(Props(new FundsProcessor(url, fundsService)), s"Reader$idx")
       }
 
       readers foreach (_ ! FundsProcessor.Read)
@@ -47,12 +47,11 @@ class Master(
 
       if(newReaders.isEmpty) {
         val allLines = linesNo + linesPart
-        println(allLines)
         if(allLines != 0) {
-          Logger.info(s"${context.self.path.name} Done reading links' data. Start writing data ...")
+          Logger.info(s"${context.self.path.name} Done importing links' data. $linesNo lines imported.")
         }
         else {
-          Logger.info(s"${context.self.path.name} No data to write.")
+          Logger.info(s"${context.self.path.name} No data to import.")
           context become ready
         }
       }
@@ -69,5 +68,5 @@ class Master(
 
 object Master {
   case object Tick
-  case class Write(data: mutable.Buffer[Fund])
+  case class Write(data: mutable.Buffer[Funds])
 }

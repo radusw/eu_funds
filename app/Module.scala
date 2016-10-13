@@ -2,7 +2,7 @@ import com.google.inject.AbstractModule
 import java.time.Clock
 
 import akka.actor.ActorSystem
-import models.{FundService, OnStartup}
+import models.{FundsService, OnStartup}
 import play.api.libs.concurrent.Akka
 
 /**
@@ -18,9 +18,6 @@ import play.api.libs.concurrent.Akka
 class Module extends AbstractModule {
 
   override def configure() = {
-    // Use the system clock as the default implementation of Clock
-    bind(classOf[Clock]).toInstance(Clock.systemDefaultZone)
-
     bind(classOf[OnStartup]).asEagerSingleton()
   }
 

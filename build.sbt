@@ -15,5 +15,6 @@ libraryDependencies += "com.typesafe.play" %% "anorm" % "2.5.0"
 libraryDependencies += "net.ruippeixotog" %% "scala-scraper" % "1.1.0"
 libraryDependencies += "org.apache.poi" % "poi" % "3.15"
 libraryDependencies += "com.sksamuel.elastic4s" % "elastic4s-core_2.11" % "2.3.1"
+libraryDependencies += "net.java.dev.jna" % "jna" % "4.2.2"
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % Test
 

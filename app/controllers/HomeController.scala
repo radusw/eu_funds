@@ -3,22 +3,20 @@ package controllers
 import javax.inject.Inject
 
 import models._
-import play.api.data.Forms._
-import play.api.data._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.i18n._
 import play.api.mvc._
-import views._
 
 class HomeController @Inject() (
-  fundService: FundService,
+  fundsService: FundsService,
   val messagesApi: MessagesApi)
   extends Controller with I18nSupport {
 
 
-  def index = Action { Ok }
+  def index = Action { Ok("Start searching... e.g. /list?filter=Bucuresti") }
 
-  def list(page: Int, orderBy: Int, filter: String) = Action { implicit request =>
-    Ok("")
+  def list(filter: String) = Action.async { implicit request =>
+    fundsService.find(filter).map(result => Ok(result.toString))
   }
 
 

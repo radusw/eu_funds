@@ -13,9 +13,12 @@ import workers.Master
 @javax.inject.Singleton
 class OnStartup @Inject() (
   configuration: play.api.Configuration,
-  fundService: FundService,
+  fundsService: FundsService,
   actorSystem: ActorSystem) {
 
-  actorSystem.actorOf(Props(new Master(configuration, fundService))) ! Master.Tick
+  // fetch data for the first time
+  if(fundsService.findBlocking("B").isEmpty) {
+    actorSystem.actorOf(Props(new Master(configuration, fundsService))) ! Master.Tick
+  }
 
 }

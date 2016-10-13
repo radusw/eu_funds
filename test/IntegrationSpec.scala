@@ -14,40 +14,9 @@ class IntegrationSpec extends PlaySpec {
         browser.goTo("http://localhost:3333/")
         
         browser.$("header h1").first.getText must equal("Play sample application — Fund database")
-        browser.$("section h1").first.getText must equal("574 computers found")
-        
-        browser.$("#pagination li.current").first.getText must equal("Displaying 1 to 10 of 574")
-        
-        browser.$("#pagination li.next a").click()
-        
-        browser.$("#pagination li.current").first.getText must equal("Displaying 11 to 20 of 574")
-        browser.$("#searchbox").text("Apple")
-        browser.$("#searchsubmit").click()
-        
-        browser.$("section h1").first.getText  must equal("13 computers found")
-        browser.$("a", withText("Apple II")).click()
-        
-        browser.$("section h1").first.getText  must equal("Edit computer")
+        browser.$("section h1").first.getText must equal("574 entries found")
 
-        browser.$("#discontinued").text("")
-        browser.$("input.primary").click()
-
-        browser.$("section h1").first.getText must equal("574 computers found")
-        browser.$(".alert-message").first.getText must equal("Done! Fund Apple II has been updated")
-        
-        browser.$("#searchbox").text("Apple")
-        browser.$("#searchsubmit").click()
-        
-        browser.$("a", withText("Apple II")).click()
-        browser.$("input.danger").click()
-
-        browser.$("section h1").first.getText must equal("573 computers found")
-        browser.$(".alert-message").first.getText must equal("Done! Fund has been deleted")
-        
-        browser.$("#searchbox").text("Apple")
-        browser.$("#searchsubmit").click()
-        
-        browser.$("section h1").first.getText must equal("12 computers found")
+        ???
 
       }
     }
