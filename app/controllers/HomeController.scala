@@ -17,7 +17,7 @@ class HomeController @Inject() (
   val messagesApi: MessagesApi)
   extends Controller with I18nSupport {
 
-  val master = actorSystem.actorOf(Props(new Master(configuration, fundsService)))
+  val master = actorSystem.actorOf(Props(new Master(configuration, fundsService)), "master")
 
   def index = Action { Ok("Start searching... e.g. /list?filter=Bucuresti") }
 

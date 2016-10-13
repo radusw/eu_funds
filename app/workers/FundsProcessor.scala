@@ -18,25 +18,23 @@ import scala.concurrent._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 
-class FundsProcessor(fundsService: FundsService) extends Actor {
+class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
   import FundsProcessor._
 
   implicit val exec = context.dispatcher
-  var url = ""
 
   override def receive = reading(retries)
 
   def reading(retries: Int): Receive = {
-    case Read(fileUrl) =>
-      url = fileUrl
+    case Read =>
       if (retries > 0) {
         Logger.info(s"${context.self.path.name} Reading from $url :: retry[${retries - retries}]")
         self ! blocking { Try(get(url, timeout/2, timeout, "GET")) }
       }
       else {
-        Logger.error(s"${context.self.path.name} Reading was not successful. No more retries.")
-        context.parent ! FundsProcessor.Done(0)
+        Logger.error(s"${context.self.path.name} - $url :: Reading was not successful. No more retries.")
+        stop()
       }
 
     case Retry =>
@@ -53,21 +51,26 @@ class FundsProcessor(fundsService: FundsService) extends Actor {
             result
 
           case Failure(cause) =>
-            Logger.warn(s"$url - Could not parse body - " + cause)
+            Logger.warn(s"${context.self.path.name} - $url :: Could not parse body - " + cause)
             mutable.Buffer.empty
         }
 
       if (lines.nonEmpty) {
         Logger.info(s"${context.self.path.name}  - Starting writing ${lines.size} lines")
         lines.foreach(line => fundsService.insertBlocking(line))
-        Logger.info(s"${context.self.path.name}  - Done inserting ${lines.size}.")
+        Logger.info(s"${context.self.path.name} - Done inserting ${lines.size}.")
       }
 
-      context.parent ! FundsProcessor.Done(lines.size)
+      stop(lines.size)
 
     case Failure(cause) =>
-      Logger.warn(s"${context.self.path.name} Reading failed - " + cause)
+      Logger.warn(s"${context.self.path.name} - $url reading failed - " + cause)
       self ! Retry
+  }
+
+  def stop(size: Int = 0): Unit = {
+    context.parent ! FundsProcessor.Done(size)
+    context.stop(self)
   }
 
   @throws(classOf[java.io.IOException])
@@ -126,7 +129,7 @@ class FundsProcessor(fundsService: FundsService) extends Actor {
               title(idx) -> value
             })
         } catch {
-          case NonFatal(e) => Logger.warn(s"$url - Could not parse row - " + e)
+          case NonFatal(e) => Logger.warn(s"${context.self.path.name} - $url :: Could not parse row - " + e)
         }
       }
     }
@@ -139,7 +142,7 @@ object FundsProcessor {
   val retries = 8
   val timeout = 12000
 
-  case class Read(url: String)
+  case object Read
   case class Done(noOfLinesWritten: Int)
   case object Retry
 }

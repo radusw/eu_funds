@@ -1,14 +1,13 @@
 package workers
 
 import akka.actor.{Actor, ActorRef, Props, Terminated}
-import akka.routing.{ActorRefRoutee, RoundRobinRoutingLogic, Router}
+import akka.routing.{ActorRefRoutee, Router, SmallestMailboxRoutingLogic}
 import models.{Funds, FundsService}
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
 import net.ruippeixotog.scalascraper.model.Element
 import play.api.Logger
-import workers.FundsProcessor.Read
 
 import scala.collection.mutable
 
@@ -17,16 +16,6 @@ class Master(
   fundsService: FundsService) extends Actor {
 
   import workers.Master._
-
-  var router = {
-    val routees = Vector.fill(8) {
-      val r = context.actorOf(Props(new FundsProcessor(fundsService)))
-      context watch r
-      ActorRefRoutee(r)
-    }
-    Router(RoundRobinRoutingLogic(), routees)
-  }
-
 
   override def receive = ready
 
@@ -42,22 +31,41 @@ class Master(
       val fileUrls: Set[String] = items.map(_.attr("href")).toSet
 
       Logger.info(s"${context.self.path.name} Reading data from " + fileUrls.size + " links ...")
-      for (url <- fileUrls) self ! FundsProcessor.Read(url)
+      val readers = for {
+        (url, idx) <- fileUrls.zipWithIndex
+      } yield {
+        context.actorOf(Props(new FundsProcessor(url, fundsService)), s"Reader$idx")
+      }
+      val batches = readers.grouped(8).toVector
 
-    case work@FundsProcessor.Read(url) =>
-      router.route(work, sender())
+      batches.headOption.foreach { firstBatch =>
+        firstBatch.foreach(_ ! FundsProcessor.Read)
+        context become reading(batches, 0)
+      }
+  }
+
+  def reading(batches: Vector[Set[ActorRef]], linesNo: Int): Receive = {
 
     case FundsProcessor.Done(linesPart) =>
-      if(linesPart != 0)
-        Logger.info(s"${context.self.path.name} Done importing links' data. $linesPart lines imported.")
-      else
-        Logger.info(s"${context.self.path.name} No data to import.")
+      val newReaders = batches.head - sender
+      if (newReaders.isEmpty) {
+        if (batches.size <= 1) {
+          Logger.info(s"${context.self.path.name} Inserted ${linesNo + linesPart} in total.")
+          context become ready
+        }
+        else {
+          val rest = batches.tail
+          rest.head.foreach(_ ! FundsProcessor.Read)
+          context become reading(rest, linesNo + linesPart)
+        }
+      }
+      else {
+        val updatedBatches = batches.updated(0, newReaders)
+        context become reading(updatedBatches, linesNo + linesPart)
+      }
 
-    case Terminated(a) =>
-      router = router.removeRoutee(a)
-      val r = context.actorOf(Props(new FundsProcessor(fundsService)))
-      context watch r
-      router = router.addRoutee(r)
+    case Tick =>
+      Logger.error(s"${context.self.path.name} reading :: Tick ignored.")
   }
 }
 
