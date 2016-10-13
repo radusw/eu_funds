@@ -10,7 +10,7 @@ import scala.util.{Failure, Success, Try}
 import akka.actor._
 import models.{Funds, FundsService}
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
-import org.apache.poi.ss.usermodel.{CellType, Row}
+import org.apache.poi.ss.usermodel.CellType
 import play.api.Logger
 
 import scala.collection.mutable
@@ -60,7 +60,7 @@ class FundsProcessor(fundsService: FundsService) extends Actor {
       if (lines.nonEmpty) {
         Logger.info(s"${context.self.path.name}  - Starting writing ${lines.size} lines")
         lines.foreach(line => fundsService.insertBlocking(line))
-        Logger.warn(s"${context.self.path.name}  - Done inserting ${lines.size}.")
+        Logger.info(s"${context.self.path.name}  - Done inserting ${lines.size}.")
       }
 
       context.parent ! FundsProcessor.Done(lines.size)
@@ -92,37 +92,42 @@ class FundsProcessor(fundsService: FundsService) extends Actor {
     val funds = mutable.Buffer.empty[Funds]
 
     val sheets = new HSSFWorkbook(stream).sheetIterator()
+    var title = mutable.Buffer.empty[String]
     while (sheets.hasNext) {
       val sheet = sheets.next()
       val rows = sheet.rowIterator()
 
-      val firstRow = rows.next()
-      val title = firstRow.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
-        cell.getCellTypeEnum match {
-          case CellType.STRING => cell.getStringCellValue.replaceAll("\\W", "")
-          case CellType.NUMERIC => cell.getNumericCellValue.toString.replaceAll("\\W", "")
-          case _ => "N/A"
+      val firstRow = Option(rows.next())
+      if(firstRow.isDefined && firstRow.get.getLastCellNum > 5) {
+        title = firstRow.get.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
+          cell.getCellTypeEnum match {
+            case CellType.STRING => cell.getStringCellValue.replaceAll("\\W", "")
+            case CellType.NUMERIC => cell.getNumericCellValue.toString.replaceAll("\\W", "")
+            case _ => "N/A"
+          }
         }
       }
 
-      while(rows.hasNext) try {
-        funds += Funds(
-          rows.next().cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
-            val value = cell.getCellTypeEnum match {
-              case CellType.STRING => cell.getStringCellValue
-              case CellType.NUMERIC => cell.getNumericCellValue.toString
-              case CellType.BOOLEAN => cell.getBooleanCellValue.toString
-              case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
+      if(title.nonEmpty) {
+        while (rows.hasNext) try {
+          funds += Funds(
+            rows.next().cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
+              val value = cell.getCellTypeEnum match {
                 case CellType.STRING => cell.getStringCellValue
                 case CellType.NUMERIC => cell.getNumericCellValue.toString
-                case _ => ""
+                case CellType.BOOLEAN => cell.getBooleanCellValue.toString
+                case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
+                  case CellType.STRING => cell.getStringCellValue
+                  case CellType.NUMERIC => cell.getNumericCellValue.toString
+                  case _ => ""
+                }
+                case CellType.BLANK | CellType.ERROR | CellType._NONE => ""
               }
-              case CellType.BLANK | CellType.ERROR | CellType._NONE => ""
-            }
-            title(idx) -> value
-          })
-      } catch {
-        case NonFatal(e) => Logger.warn(s"$url - Could not parse row - " + e)
+              title(idx) -> value
+            })
+        } catch {
+          case NonFatal(e) => Logger.warn(s"$url - Could not parse row - " + e)
+        }
       }
     }
 
