@@ -43,25 +43,14 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
       context.system.scheduler.scheduleOnce((1 << retryNo) seconds, self, Read) // exponential backoff
 
     case Success(stream: InputStream) =>
-      val lines: mutable.Buffer[Funds] =
-        Try {
-          parseXls(stream)
-        } match {
-          case Success(result) =>
-            result
+      val processedLinesNo: Int = Try(processXls(stream)) match {
+        case Success(result) => result
 
-          case Failure(cause) =>
-            Logger.warn(s"${context.self.path.name} - $url :: Could not parse body - " + cause)
-            mutable.Buffer.empty
-        }
-
-      if (lines.nonEmpty) {
-        Logger.info(s"${context.self.path.name}  - Starting writing ${lines.size} lines")
-        lines.foreach(line => Try(fundsService.insertBlocking(line)))
-        Logger.info(s"${context.self.path.name} - Done inserting ${lines.size}.")
+        case Failure(cause) =>
+          Logger.warn(s"${context.self.path.name} - $url :: Could not parse body - " + cause)
+          0
       }
-
-      stop(lines.size)
+      stop(processedLinesNo)
 
     case Failure(cause) =>
       Logger.warn(s"${context.self.path.name} - $url reading failed - " + cause)
@@ -91,11 +80,12 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
     connection.getInputStream
   }
 
-  def parseXls(stream: InputStream) = {
-    val funds = mutable.Buffer.empty[Funds]
+  def processXls(stream: InputStream): Int = {
+    var noOfLines = 0
 
     val sheets = new HSSFWorkbook(stream).sheetIterator()
     var title = mutable.Buffer.empty[String]
+
     while (sheets.hasNext) {
       val sheet = sheets.next()
       val rows = sheet.rowIterator()
@@ -113,7 +103,7 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
       if(title.nonEmpty) {
         while (rows.hasNext) try {
-          funds += Funds(
+          val funds = Funds(
             rows.next().cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
               val value = cell.getCellTypeEnum match {
                 case CellType.STRING => cell.getStringCellValue
@@ -128,13 +118,16 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
               }
               title(idx) -> value
             })
+
+          fundsService.insertBlocking(funds)
+          noOfLines += 1
         } catch {
-          case NonFatal(e) => Logger.warn(s"${context.self.path.name} - $url :: Could not parse row - " + e)
+          case NonFatal(e) => Logger.warn(s"${context.self.path.name} :: Err processing row - " + e)
         }
       }
     }
 
-    funds
+    noOfLines
   }
 }
 
