@@ -27,15 +27,14 @@ Edit /conf/application.conf
 
 ## Example
 ### How many funds accesses in a city:
-/list?filter=Constanta&from=0&size=200
-```  "hits" : {
-    "total" : 61527,
+- /list?filter=Constanta&from=0&size=200
+```javascript
+"hits" : { "total" : 61527, ...
 ```
 
 ### Search by company name:
-/list?filter=Titluproiuect:hotel Criss&from=0&size=100
-
-```
+- /list?filter=Titluproiuect:hotel Criss&from=0&size=100
+```javascript
 RichSearchResponse({
   "took" : 19,
   "timed_out" : false,
@@ -90,5 +89,5 @@ RichSearchResponse({
         "Datadepunerecerere" : "41754.0"
       }
     }, {
- ...   
- ```
+    ...
+```
