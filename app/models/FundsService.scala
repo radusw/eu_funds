@@ -28,11 +28,11 @@ class FundsService @Inject() (
   }
 
   def find(filter: String) = {
-    client.execute { search in "gov" / "funds" query filter limit 10 }
+    client.execute { search in "gov" / "funds" query filter }
   }
 
   def findBlocking(filter: String) = {
-    client.execute { search in "gov" / "funds" query filter limit 10 }.await
+    client.execute { search in "gov" / "funds" query filter }.await
   }
 
   def insert(funds: Funds) = {

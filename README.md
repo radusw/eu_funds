@@ -15,7 +15,7 @@ Refresh data
 GET     /refresh
 
 3. 
-Search for data (limited to 10 results)
+Search for data
 GET     /list?filter=<String>    
 
 
