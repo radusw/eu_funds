@@ -8,15 +8,15 @@
 ## Endpoints
 1. 
 Root
-GET     /     
+> GET     /     
 
 2. 
 Refresh data
-GET     /refresh
+> GET     /refresh
 
 3. 
 Search for data
-GET     /list?filter=???&from=0&size=25
+> GET     /list?filter=???&from=0&size=25
 
 
 ## Config
