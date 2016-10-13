@@ -19,7 +19,7 @@ class HomeController @Inject() (
 
   val master = actorSystem.actorOf(Props(new Master(configuration, fundsService)), "master")
 
-  def index = Action { Ok("Start searching... e.g. /list?filter=Bucuresti") }
+  def index = Action { Ok("Start searching... e.g. /list?filter=Titluproiuect:hotel Criss") }
 
   def list(filter: String) = Action.async { implicit request =>
     fundsService.find(filter).map(result => Ok(result.toString))
