@@ -57,7 +57,7 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
       if (lines.nonEmpty) {
         Logger.info(s"${context.self.path.name}  - Starting writing ${lines.size} lines")
-        lines.foreach(line => fundsService.insertBlocking(line))
+        lines.foreach(line => Try(fundsService.insertBlocking(line)))
         Logger.info(s"${context.self.path.name} - Done inserting ${lines.size}.")
       }
 
