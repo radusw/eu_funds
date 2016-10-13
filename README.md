@@ -26,7 +26,15 @@ Edit /conf/application.conf
 - elastic.data.path = "data"
 
 ## Example
+### How many funds accesses in a city:
+/list?filter=Constanta&from=0&size=200
+```  "hits" : {
+    "total" : 61527,
+```
+
+### Search by company name:
 /list?filter=Titluproiuect:hotel Criss&from=0&size=100
+
 ```
 RichSearchResponse({
   "took" : 19,
@@ -82,4 +90,5 @@ RichSearchResponse({
         "Datadepunerecerere" : "41754.0"
       }
     }, {
-```
+ ...   
+ ```
