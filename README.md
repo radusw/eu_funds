@@ -7,15 +7,15 @@
 ## Endpoints
 1. 
 Root
-GET     /   
+GET     /     
 
 2. 
-Search for data (limited to 10 results)
-GET     /list?filter=<String>      
-
-3. 
 Refresh data
 GET     /refresh
+
+3. 
+Search for data (limited to 10 results)
+GET     /list?filter=<String>    
 
 
 ## Config
