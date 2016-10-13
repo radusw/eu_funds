@@ -2,7 +2,8 @@
 
 ## How to run
 1. Install Play activator ( https://www.playframework.com/documentation/2.5.x/Installing )
-2. $activator run -J-Xmx4G
+2. cd to project location
+3. $activator run -J-Xmx4G
 
 ## Endpoints
 1. 
