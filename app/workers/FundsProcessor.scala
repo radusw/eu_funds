@@ -50,6 +50,7 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
           Logger.warn(s"${context.self.path.name} - $url :: Could not parse body - " + cause)
           0
       }
+      Logger.info(s"${context.self.path.name} wrote $processedLinesNo lines.")
       stop(processedLinesNo)
 
     case Failure(cause) =>
