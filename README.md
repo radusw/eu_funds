@@ -6,8 +6,8 @@
 3. $activator run -J-Xmx4G
 
 ## How to deploy
-1. Run activator
-2. update production.conf with the new secret generate with [eu-funds] $ playGenerateSecret
+1. Using activator update production.conf with the new secret generated with [eu-funds] $ playGenerateSecret
+2. run [eu-funds] $ dist
 3. distribute the generated zip file
 4. unzip
 5. chmod +x /path/to/yourapp/bin/eu-funds
