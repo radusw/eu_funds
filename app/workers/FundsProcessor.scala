@@ -56,7 +56,7 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
         }
       if (lines.nonEmpty) {
         Logger.info(s"${context.self.path.name}  - Starting writing ${lines.size} lines")
-        lines.foreach(line => fundsService.insert(line))
+        lines.foreach(line => fundsService.insertBlocking(line))
         Logger.warn(s"${context.self.path.name}  - Done inserting ${lines.size}.")
       }
       stop(lines.size)
@@ -100,8 +100,8 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
       val firstRow = rows.next()
       val title = firstRow.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
         cell.getCellTypeEnum match {
-          case CellType.STRING => cell.getStringCellValue
-          case CellType.NUMERIC => cell.getNumericCellValue.toString
+          case CellType.STRING => cell.getStringCellValue.replaceAll("\\W", "")
+          case CellType.NUMERIC => cell.getNumericCellValue.toString.replaceAll("\\W", "")
           case _ => "N/A"
         }
       }
