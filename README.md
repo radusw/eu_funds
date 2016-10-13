@@ -16,7 +16,7 @@ GET     /refresh
 
 3. 
 Search for data
-GET     /list?filter=???
+GET     /list?filter=???&from=0&size=25
 
 
 ## Config
@@ -26,7 +26,7 @@ Edit /conf/application.conf
 - elastic.data.path = "data"
 
 ## Example
-/list?filter=Titluproiuect:hotel Criss
+/list?filter=Titluproiuect:hotel Criss&from=0&size=100
 ```
 RichSearchResponse({
   "took" : 19,

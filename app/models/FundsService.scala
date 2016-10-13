@@ -27,12 +27,12 @@ class FundsService @Inject() (
       Logger.error(s"Could not create index - " + cause)
   }
 
-  def find(filter: String) = {
-    client.execute { search in "gov" / "funds" query filter }
+  def find(filter: String, offset: Int, pageSize: Int) = {
+    client.execute { search in "gov" / "funds" query filter from offset size pageSize }
   }
 
-  def findBlocking(filter: String) = {
-    client.execute { search in "gov" / "funds" query filter }.await
+  def findBlocking(filter: String, offset: Int, pageSize: Int) = {
+    client.execute { search in "gov" / "funds" query filter from offset size pageSize }.await
   }
 
   def insert(funds: Funds) = {

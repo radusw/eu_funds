@@ -21,8 +21,8 @@ class HomeController @Inject() (
 
   def index = Action { Ok("Start searching... e.g. /list?filter=Titluproiuect:hotel Criss") }
 
-  def list(filter: String) = Action.async { implicit request =>
-    fundsService.find(filter).map(result => Ok(result.toString))
+  def list(filter: String, from: Int, size: Int) = Action.async { implicit request =>
+    fundsService.find(filter, from, size).map(result => Ok(result.toString))
   }
 
   def refreshData() = Action.async { request =>
