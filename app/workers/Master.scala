@@ -36,7 +36,7 @@ class Master(
       } yield {
         context.actorOf(Props(new FundsProcessor(url, fundsService)), s"Reader$idx")
       }
-      val batches = readers.grouped(8).toVector
+      val batches = readers.grouped(Runtime.getRuntime.availableProcessors()).toVector
 
       batches.headOption.foreach { firstBatch =>
         firstBatch.foreach(_ ! FundsProcessor.Read)
