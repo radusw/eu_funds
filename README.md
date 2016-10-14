@@ -83,28 +83,30 @@ RichSearchResponse({
         "COD_AP" : "1"
       }
     }, {
+    ...
+    }, {
       "_index" : "gov",
       "_type" : "funds",
-      "_id" : "AVfB758kcouILs8nc7Vz",
+      "_id" : "AVfB8mHJcouILs8nfU9K",
       "_score" : 3.4092171,
       "_source" : {
         "COD_OPER" : "***",
-        "NUMAR_AUTORIZARE" : "22.0",
+        "NUMAR_AUTORIZARE" : "20.0",
         "REGIUNEA_BENEFICIARULUI" : "BUCURESTI - ILFOV",
         "COD_PO" : "5",
         "TITLU_PROIECT" : "Constructie autostrada Cernavoda-Constanta",
         "JUDETUL_BENEFICIARULUI" : "BUCURESTI",
         "NUME_BENEFICIAR" : "COMPANIA NATIONALA DE AUTOSTRAZI SI DRUMURI NATIONALE DIN ROMANIA",
-        "MOTIV_INTIRZIERE" : "",
-        "DATA_DEPUNERE_CERERE" : "04-NOV-14",
-        "CHEIE" : "3460\\22",
+        "MOTIV_INTIRZIERE" : "AUTORIZARE SUSPENDATA",
+        "DATA_DEPUNERE_CERERE" : "Wed Sep 16 00:00:00 EEST 2015",
+        "CHEIE" : "3460\\20",
         "COD_SMIS" : "3460.0",
         "REIMBURS_OP_LIST" : "",
         "COD_BENEFICIAR" : "279.0",
-        "VALOARE_AUTORIZATA" : "0.0",
-        "DATA_AUTORIZATA" : "17-DEC-15",
+        "VALOARE_AUTORIZATA" : "",
+        "DATA_AUTORIZATA" : "",
         "COD_DMI" : "1.1",
-        "VALOARE_ELIGIBILA_CERUTA" : "2.12307753E7",
+        "VALOARE_ELIGIBILA_CERUTA" : "",
         "VALOARE_RAMBURSATA" : "",
         "LOCALITATEA_BENEFICIARULUI" : "MUNICIPIUL BUCURESTI",
         "DATA_ULTIMEI_PLATI" : "",
