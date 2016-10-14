@@ -10,7 +10,7 @@ import scala.util.{Failure, Success, Try}
 import akka.actor._
 import models.{Funds, FundsService}
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
-import org.apache.poi.ss.usermodel.CellType
+import org.apache.poi.ss.usermodel.{CellType, DateUtil}
 import play.api.Logger
 
 import scala.collection.mutable
@@ -93,13 +93,12 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
       val firstRow = Option(rows.next())
       if(firstRow.isDefined && firstRow.get.getLastCellNum > 5) {
-        title = firstRow.get.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].map { cell =>
-          cell.getCellTypeEnum match {
-            case CellType.STRING => cell.getStringCellValue.replaceAll("\\W", "")
-            case CellType.NUMERIC => cell.getNumericCellValue.toString.replaceAll("\\W", "")
-            case _ => "N/A"
-          }
-        }
+        val cells = firstRow.get.cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell]
+        title =
+          if(cells.forall(cell => cell.getCellTypeEnum == CellType.STRING))
+            cells.map(cell => cell.getStringCellValue.replaceAll("\\.", ""))
+          else
+            title
       }
 
       if(title.nonEmpty) {
@@ -108,7 +107,11 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
             rows.next().cellIterator().toBuffer[org.apache.poi.ss.usermodel.Cell].zipWithIndex.map { case (cell, idx) =>
               val value = cell.getCellTypeEnum match {
                 case CellType.STRING => cell.getStringCellValue
-                case CellType.NUMERIC => cell.getNumericCellValue.toString
+                case CellType.NUMERIC =>
+                  if(DateUtil.isCellDateFormatted(cell))
+                    cell.getDateCellValue.toString
+                  else
+                    cell.getNumericCellValue.toString
                 case CellType.BOOLEAN => cell.getBooleanCellValue.toString
                 case CellType.FORMULA => cell.getCachedFormulaResultTypeEnum match {
                   case CellType.STRING => cell.getStringCellValue
