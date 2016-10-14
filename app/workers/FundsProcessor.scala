@@ -24,12 +24,12 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
   implicit val exec = context.dispatcher
 
-  override def receive = reading(retries)
+  override def receive = reading(maxNoOfRetries)
 
   def reading(retries: Int): Receive = {
     case Read =>
       if (retries > 0) {
-        Logger.info(s"${context.self.path.name} Reading from $url :: retry[${retries - retries}]")
+        Logger.info(s"${context.self.path.name} Reading from $url :: retry[${maxNoOfRetries - retries}]")
         self ! blocking { Try(get(url, timeout/2, timeout, "GET")) }
       }
       else {
@@ -39,7 +39,7 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 
     case Retry =>
       context become reading(retries - 1)
-      val retryNo = retries - retries + 1
+      val retryNo = maxNoOfRetries - retries + 1
       context.system.scheduler.scheduleOnce((1 << retryNo) seconds, self, Read) // exponential backoff
 
     case Success(stream: InputStream) =>
@@ -136,7 +136,7 @@ class FundsProcessor(url: String, fundsService: FundsService) extends Actor {
 }
 
 object FundsProcessor {
-  val retries = 8
+  val maxNoOfRetries = 8
   val timeout = 12000
 
   case object Read
